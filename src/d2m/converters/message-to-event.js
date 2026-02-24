@@ -769,7 +769,22 @@ async function messageToEvent(message, guild, options = {}, di) {
 	// Then scheduled events
 	if (message.content && di?.snow) {
 		for (const match of [...message.content.matchAll(/discord\.gg\/([A-Za-z0-9]+)\?event=([0-9]{18,})/g)]) { // snowflake has minimum 18 because the events feature is at least that old
-			const invite = await di.snow.invite.getInvite(match[1], {guild_scheduled_event_id: match[2]})
+			// FIX: Wrap the API call in try/catch to handle expired events gracefully
+			let invite
+			try {
+				invite = await di.snow.invite.getInvite(match[1], {guild_scheduled_event_id: match[2]})
+			} catch (e) {
+				if (e.code === 10006 || e.httpStatus === 404) {
+					// The event or invite is expired. Render a fallback notice so it's obvious, but don't crash.
+					console.warn(`[Backfill] Skipped expired scheduled event: ${match[0]}`)
+					const fallbackBody = `[Expired Scheduled Event: ${match[0]}]`
+					const fallbackHtml = `<blockquote>Expired Scheduled Event: <a href="https://${match[0]}">${match[0]}</a></blockquote>`
+					await addTextEvent(fallbackBody, fallbackHtml, "m.notice")
+					continue
+				}
+				throw e // Re-throw unexpected errors (like 429 Rate Limits or 500s)
+			}
+
 			const event = invite.guild_scheduled_event
 			if (!event) continue // the event ID provided was not valid
 
