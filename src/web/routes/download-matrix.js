@@ -16,6 +16,9 @@ const emojiSheet = sync.require("../../m2d/actions/emoji-sheet")
 /** @type {import("../../m2d/converters/emoji-sheet")} */
 const emojiSheetConverter = sync.require("../../m2d/converters/emoji-sheet")
 
+/** @type {import("../../m2d/actions/sticker")} */
+const sticker = sync.require("../../m2d/actions/sticker")
+
 const schema = {
 	params: z.object({
 		server_name: z.string(),
@@ -23,6 +26,9 @@ const schema = {
 	}),
 	sheet: z.object({
 		e: z.array(z.string()).or(z.string())
+	}),
+	sticker: z.object({
+		mxc: z.string()	
 	})
 }
 
@@ -90,3 +96,16 @@ as.router.get(`/download/sheet`, defineEventHandler(async event => {
 	setResponseHeader(event, "Content-Type", "image/png")
 	return buffer
 }))
+
+as.router.get(`/download/sticker.webp`, defineEventHandler(async event => {
+	const query = await getValidatedQuery(event, schema.sticker.parse)
+
+	/** remember that these have no mxc:// protocol in the string */
+	verifyMediaHash(query.mxc)
+	const mxc = `mxc://${query.mxc}`
+	
+	setResponseHeader(event, "Content-Type", 'image/webp')
+	const buffer = await sticker.getAndResizeSticker(mxc)
+	return buffer
+}))
+

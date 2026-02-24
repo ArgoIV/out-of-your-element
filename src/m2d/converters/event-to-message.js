@@ -632,23 +632,16 @@ async function eventToMessage(event, guild, channel, di) {
 
 	if (event.type === "m.sticker") {
 		content = ""
-		let filename = event.content.body
-		if (event.type === "m.sticker") {
-			let mimetype
-			if (event.content.info?.mimetype?.includes("/")) {
-				mimetype = event.content.info.mimetype
-			} else {
-				const res = await di.api.getMedia(event.content.url, {method: "HEAD"})
-				if (res.status === 200) {
-					mimetype = res.headers.get("content-type")
-				}
-				if (!mimetype) throw new Error(`Server error ${res.status} or missing content-type while detecting sticker mimetype`)
-			}
-			filename += "." + mimetype.split("/")[1]
-		}
-		attachments.push({id: "0", filename})
-		pendingFiles.push({name: filename, mxc: event.content.url})
+		content += `[${event.content.body}](` // sticker title for fallback if the url preview fails
+		const afterLink = ")"
 
+		// Make sticker URL params
+		const params = new URLSearchParams()
+		const withoutMxc = mxUtils.makeMxcPublic(event.content.url)
+		assert(withoutMxc)
+		params.append("mxc", withoutMxc)
+		const url = `${reg.ooye.bridge_origin}/download/sticker.webp?${params.toString()}`
+		content += url + afterLink
 	} else if (event.type === "org.matrix.msc3381.poll.start") {
 		const pollContent = event.content["org.matrix.msc3381.poll.start"] // just for convenience
 		const isClosed = false;
