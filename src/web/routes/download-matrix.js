@@ -28,7 +28,8 @@ const schema = {
 		e: z.array(z.string()).or(z.string())
 	}),
 	sticker: z.object({
-		mxc: z.string()	
+		server_name: z.string().regex(/^[^/]+$/),
+		media_id: z.string().regex(/^[A-Za-z0-9_-]+$/)
 	})
 }
 
@@ -97,15 +98,13 @@ as.router.get(`/download/sheet`, defineEventHandler(async event => {
 	return buffer
 }))
 
-as.router.get(`/download/sticker.webp`, defineEventHandler(async event => {
-	const query = await getValidatedQuery(event, schema.sticker.parse)
+as.router.get(`/download/sticker/:server_name/:media_id/_.webp`, defineEventHandler(async event => {
+	const {server_name, media_id} = await getValidatedRouterParams(event, schema.sticker.parse)
+	/** remember that this has no mxc:// protocol in the string */
+	const mxc = server_name + "/" + media_id
+	verifyMediaHash(mxc)
 
-	/** remember that these have no mxc:// protocol in the string */
-	verifyMediaHash(query.mxc)
-	const mxc = `mxc://${query.mxc}`
-	
-	setResponseHeader(event, "Content-Type", 'image/webp')
-	const buffer = await sticker.getAndResizeSticker(mxc)
-	return buffer
+	const stream = await sticker.getAndResizeSticker(`mxc://${mxc}`)
+	setResponseHeader(event, "Content-Type", "image/webp")
+	return stream
 }))
-

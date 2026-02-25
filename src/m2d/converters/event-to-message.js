@@ -631,17 +631,11 @@ async function eventToMessage(event, guild, channel, di) {
 	}
 
 	if (event.type === "m.sticker") {
-		content = ""
-		content += `[${event.content.body}](` // sticker title for fallback if the url preview fails
-		const afterLink = ")"
-
-		// Make sticker URL params
-		const params = new URLSearchParams()
 		const withoutMxc = mxUtils.makeMxcPublic(event.content.url)
 		assert(withoutMxc)
-		params.append("mxc", withoutMxc)
-		const url = `${reg.ooye.bridge_origin}/download/sticker.webp?${params.toString()}`
-		content += url + afterLink
+		const url = `${reg.ooye.bridge_origin}/download/sticker/${withoutMxc}/_.webp`
+		content = `[${event.content.body || "\u2800"}](${url})`
+
 	} else if (event.type === "org.matrix.msc3381.poll.start") {
 		const pollContent = event.content["org.matrix.msc3381.poll.start"] // just for convenience
 		const isClosed = false;
